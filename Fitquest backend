@@ -1,0 +1,391 @@
+import gradio as gr
+import random
+import mediapipe as mp
+from typing import List, Tuple
+from datetime import datetime, date
+
+
+def calculate_bmi(weight: float, height: float) -> Tuple[float, str]:
+    """Calculate BMI and return classification"""
+    bmi = weight / (height * height)
+    if bmi < 18.5:
+        classification = "Underweight"
+    elif 18.5 <= bmi < 25:
+        classification = "Normal weight"
+    elif 25 <= bmi < 30:
+        classification = "Overweight"
+    else:
+        classification = "Obese"
+    return bmi, classification
+
+
+def suggest_diet_plan(bmi_class: str) -> dict:
+    """Suggest detailed diet plan based on BMI classification"""
+    base_guidelines = [
+        "💧 Drink at least 8 glasses of water daily",
+        "🥗 Include plenty of vegetables in every meal",
+        "🍎 Choose whole fruits over juices",
+        "🥩 Include lean proteins in each meal"
+    ]
+
+    meal_plans = {
+        "Underweight": {
+            "morning": [
+                "🥛 High-protein smoothie with banana, nuts, and protein powder",
+                "🥐 Whole grain bread with avocado and eggs",
+                "🥜 Mixed nuts and dried fruits"
+            ],
+            "afternoon": [
+                "🍚 Large portion of brown rice",
+                "🥩 Grilled chicken or fish",
+                "🥗 Roasted vegetables with olive oil",
+                "🥑 Avocado side salad"
+            ],
+            "evening": [
+                "🥜 Protein shake with nuts",
+                "🍌 Banana with peanut butter",
+                "🥛 Greek yogurt with honey"
+            ],
+            "night": [
+                "🍗 Protein-rich dinner (chicken/fish/tofu)",
+                "🥔 Sweet potato or quinoa",
+                "🥦 Steamed vegetables",
+                "🥛 Glass of milk before bed"
+            ]
+        },
+        "Normal weight": {
+            "morning": [
+                "🥣 Oatmeal with berries and nuts",
+                "🍳 2 eggs with whole grain toast",
+                "🫐 Fresh fruit"
+            ],
+            "afternoon": [
+                "🍗 Grilled chicken breast",
+                "🥗 Quinoa or brown rice",
+                "🥬 Large green salad",
+                "🥑 Healthy fats (olive oil dressing)"
+            ],
+            "evening": [
+                "🥜 Small handful of nuts",
+                "🍎 Apple with almond butter",
+                "🥛 Greek yogurt"
+            ],
+            "night": [
+                "🐟 Lean protein (fish/tofu)",
+                "🥦 Steamed vegetables",
+                "🥔 Small portion of complex carbs"
+            ]
+        },
+        "Overweight": {
+            "morning": [
+                "🍳 Egg white omelet with vegetables",
+                "🥣 High-fiber cereal with almond milk",
+                "🫐 Small portion of berries"
+            ],
+            "afternoon": [
+                "🥗 Large green salad with grilled chicken",
+                "🥑 Light olive oil dressing",
+                "🍠 Small portion of complex carbs"
+            ],
+            "evening": [
+                "🥕 Raw vegetables with hummus",
+                "🥛 Low-fat Greek yogurt",
+                "🫐 Small handful of berries"
+            ],
+            "night": [
+                "🐟 Grilled fish or lean protein",
+                "🥦 Large portion of vegetables",
+                "🥗 Light soup or salad"
+            ]
+        },
+        "Obese": {
+            "morning": [
+                "🍳 Egg whites with spinach",
+                "🥣 High-fiber, low-sugar cereal",
+                "🫐 Small serving of berries"
+            ],
+            "afternoon": [
+                "🥗 Large green salad",
+                "🍗 Lean protein (chicken/fish)",
+                "🥑 Light dressing"
+            ],
+            "evening": [
+                "🥕 Raw vegetables",
+                "🥒 Cucumber with light hummus",
+                "🫐 Small piece of fruit"
+            ],
+            "night": [
+                "🐟 Lean protein (fish/chicken breast)",
+                "🥦 Steamed vegetables (unlimited)",
+                "🥗 Light soup"
+            ]
+        }
+    }
+
+    return {
+        "guidelines": base_guidelines,
+        "meal_plan": meal_plans[bmi_class]
+    }
+
+
+class FitnessApp:
+    def __init__(self):
+        self.user_points = 0
+        self.daily_task_count = 0
+        self.last_task_date = date.today()
+
+        self.tasks = [
+            # Beginner tasks
+            {"task": "Do 10 push-ups", "points": 10, "level": "beginner"},
+            {"task": "Run for 15 minutes", "points": 15, "level": "beginner"},
+            {"task": "Do 20 squats", "points": 12, "level": "beginner"},
+            {"task": "Hold a 1-minute plank", "points": 10, "level": "beginner"},
+            # Intermediate tasks
+            {"task": "Complete 3 sets of 15 burpees", "points": 20, "level": "intermediate"},
+            {"task": "Do 20 jump lunges (10 each leg)", "points": 18, "level": "intermediate"},
+            {"task": "Hold a 2-minute plank with leg raises", "points": 20, "level": "intermediate"},
+            {"task": "Complete 30 mountain climbers", "points": 15, "level": "intermediate"},
+            # Advanced tasks
+            {"task": "Do 10 plyometric push-ups", "points": 25, "level": "advanced"},
+            {"task": "Complete 50 kettlebell swings", "points": 25, "level": "advanced"},
+            {"task": "Do 20 pistol squats (10 each leg)", "points": 30, "level": "advanced"},
+            {"task": "Complete 5 muscle-ups", "points": 35, "level": "advanced"}
+        ]
+
+        self.rewards = [
+            {"threshold": 30, "reward": "Free recipe guide unlocked!"},
+            {"threshold": 50, "reward": "Workout playlist unlocked!"},
+            {"threshold": 75, "reward": "Relaxation session earned!"},
+            {"threshold": 100, "reward": "Personalized workout plan unlocked!"},
+            {"threshold": 150, "reward": "Advanced nutrition consultation unlocked!"},
+            {"threshold": 200, "reward": "Premium workout videos access granted!"}
+        ]
+
+    def suggest_exercise_plan(self, strength_level: str, health_issues: List[str]) -> List[str]:
+        """Enhanced exercise plan suggestion with more advanced options"""
+        exercises = {
+            "Beginner": [
+                "🏃‍♂️ Start with 15 minutes of brisk walking",
+                "💪 3 sets of 10 regular push-ups",
+                "🦵 3 sets of 15 bodyweight squats",
+                "🧘‍♂️ 1-minute plank holds",
+                "🚶‍♂️ 10 minutes of dynamic stretching"
+            ],
+            "Intermediate": [
+                "🏃‍♂️ 20 minutes of interval running (1 min sprint, 2 min jog)",
+                "💪 4 sets of 15 diamond push-ups",
+                "🦵 4 sets of 20 jump squats",
+                "🏋️‍♂️ 3 sets of 12 dumbbell rows",
+                "🧘‍♂️ 2-minute plank variations (side planks, leg raises)",
+                "🔄 3 sets of 15 burpees",
+                "💪 3 sets of 10 pull-ups"
+            ],
+            "Advanced": [
+                "🏃‍♂️ 30 minutes of HIIT (30s work, 30s rest)",
+                "💪 5 sets of 20 plyometric push-ups",
+                "🦵 4 sets of 15 pistol squats per leg",
+                "🏋️‍♂️ 4 sets of 12 weighted pull-ups",
+                "🧘‍♂️ 3-minute advanced plank circuit",
+                "🔄 5 sets of 20 burpee pull-ups",
+                "💪 3 sets of 8 muscle-ups",
+                "🏋️‍♂️ Olympic lifting technique practice"
+            ]
+        }
+
+        plan = exercises[strength_level].copy()
+        if health_issues:
+            for issue in health_issues:
+                issue = issue.lower().strip()
+                if "back" in issue:
+                    plan = [ex for ex in plan if "deadlift" not in ex.lower() and "Olympic" not in ex]
+                elif "knee" in issue:
+                    plan = [ex for ex in plan if "squat" not in ex.lower() and "jump" not in ex.lower()]
+                elif "shoulder" in issue:
+                    plan = [ex for ex in plan if "push-up" not in ex.lower() and "pull-up" not in ex.lower()]
+
+        return plan
+
+    def process_task(self):
+        """Process daily task with limit check"""
+        current_date = date.today()
+
+        if current_date != self.last_task_date:
+            self.daily_task_count = 0
+            self.last_task_date = current_date
+
+        if self.daily_task_count >= 5:
+            return ("Daily task limit reached! Come back tomorrow for more tasks. "
+                    f"Current points: {self.user_points}", 0)
+
+        task = random.choice(self.tasks)
+        self.daily_task_count += 1
+        remaining_tasks = 5 - self.daily_task_count
+
+        return (f"Your task: {task['task']} (Earn {task['points']} points)\n"
+                f"Tasks remaining today: {remaining_tasks}", task["points"])
+
+    def process_completion(self, points):
+        """Enhanced completion processing with more detailed feedback"""
+        if points == 0:
+            return "No points awarded. Daily limit reached!"
+
+        self.user_points += int(points)
+        reward_msg = (f"🎉 Great job! You've earned {points} points.\n"
+                      f"Total points: {self.user_points}\n"
+                      f"Daily tasks completed: {self.daily_task_count}/5\n")
+
+        unlocked_rewards = []
+        for reward in self.rewards[:]:
+            if self.user_points >= reward["threshold"]:
+                unlocked_rewards.append(reward["reward"])
+                self.rewards.remove(reward)
+
+        if unlocked_rewards:
+            reward_msg += "\n🏆 New Rewards Unlocked!\n"
+            for reward in unlocked_rewards:
+                reward_msg += f"✨ {reward}\n"
+
+        if self.daily_task_count == 5:
+            reward_msg += "\n🌟 Amazing! You've completed all tasks for today!"
+        elif self.daily_task_count >= 3:
+            reward_msg += "\n💪 You're on fire! Keep going!"
+
+        return reward_msg
+
+    def process_fitness_data(self, weight, height, health_issues, strength_level):
+        """Process fitness data with enhanced exercise suggestions"""
+        bmi, bmi_class = calculate_bmi(weight, height)
+        bmi_info = f"Your BMI is {bmi:.2f}, classified as {bmi_class}."
+
+        diet_plan = suggest_diet_plan(bmi_class)
+        diet_text = "🍽️ General Guidelines:\n" + "\n".join(diet_plan["guidelines"]) + "\n\n"
+        diet_text += "📅 Daily Meal Plan:\n\n"
+        diet_text += "🌅 Morning:\n" + "\n".join(diet_plan["meal_plan"]["morning"]) + "\n\n"
+        diet_text += "☀️ Afternoon:\n" + "\n".join(diet_plan["meal_plan"]["afternoon"]) + "\n\n"
+        diet_text += "🌆 Evening:\n" + "\n".join(diet_plan["meal_plan"]["evening"]) + "\n\n"
+        diet_text += "🌙 Night:\n" + "\n".join(diet_plan["meal_plan"]["night"])
+
+        exercise_plan = self.suggest_exercise_plan(strength_level, health_issues.split(","))
+        exercise_text = "Suggested Exercise Plan:\n" + "\n".join(exercise_plan)
+        return bmi_info, diet_text, exercise_text
+
+    def chat_response(self, message: str, chatbot: List[List[str]]) -> Tuple[List[List[str]], str]:
+        """Enhanced chat response with more detailed information"""
+        message = message.lower()
+        response = ""
+
+        if "workout" in message:
+            response = ("I can help with various workout types:\n"
+                        "💪 Strength Training: Build muscle and power\n"
+                        "🏃‍♂️ Cardio: Improve endurance and heart health\n"
+                        "🧘‍♂️ Flexibility: Enhance mobility and recovery\n"
+                        "⚡ HIIT: Maximum results in minimum time\n"
+                        "🔄 Circuit Training: Full-body workouts\n"
+                        "Which type interests you?")
+        elif "diet" in message:
+            response = ("I can help you with nutrition:\n"
+                        "🍽️ Personalized meal plans\n"
+                        "📊 Macro tracking advice\n"
+                        "🥗 Healthy recipes\n"
+                        "⏰ Meal timing strategies\n"
+                        "💊 Supplement recommendations\n"
+                        "What would you like to know more about?")
+        elif "hello" in message or "hi" in message:
+            response = (f"Hello! I'm your virtual fitness trainer. "
+                        f"You have {self.user_points} points and "
+                        f"{5 - self.daily_task_count} tasks remaining today. "
+                        "How can I assist you?")
+        elif "bmi" in message:
+            response = ("I can calculate your BMI and provide personalized recommendations. "
+                        "Please visit the 'Fitness Profile' tab and enter your details.")
+        else:
+            response = ("I'm here to help with your fitness journey! You can ask about:\n"
+                        "🏋️‍♂️ Workout routines\n"
+                        "🥗 Diet and nutrition\n"
+                        "📊 BMI calculations\n"
+                        "✅ Daily fitness tasks\n"
+                        "What would you like to know more about?")
+
+        chatbot.append([message, response])
+        return chatbot
+
+def create_gradio_interface():
+    app = FitnessApp()
+
+    with gr.Blocks(title="FITQUEST", css="""
+        .gradio-container {background-color: #E2EAF4; color: white;}
+        .gr-button {background-color: #4CAF50; color: white; border-radius: 5px;}
+        .gr-textbox {background-color: #444; color: white; border: 1px solid #fff;}
+        .gr-markdown {color: #f1f1f1;}
+    """) as interface:
+        gr.Markdown("# 🏋 Your Personalised Fitness Companian")
+        gr.Image(r"C:\Users\dell\Downloads\WhatsApp Image 2024-12-03 at 20.20.38_c30d19a0.jpg", label="FITQUEST", type="filepath")
+        gr.Markdown("Your personal guide for fitness, health, and well-being!")
+
+        with gr.Tab("Fitness Profile"):
+            gr.Markdown("### Enter Your Details to Get Personalized Plans")
+            with gr.Row():
+                weight_input = gr.Number(label="Weight (kg)")
+                height_input = gr.Number(label="Height (meters)")
+            health_issues_input = gr.Textbox(label="Health Issues (comma-separated)")
+            strength_level_input = gr.Dropdown(
+                choices=["Beginner", "Intermediate", "Advanced"],
+                label="Strength Level"
+            )
+            profile_submit = gr.Button("Generate Plans")
+            with gr.Row():
+                bmi_output = gr.Textbox(label="BMI Information")
+                diet_output = gr.Textbox(label="Diet Plan")
+                exercise_output = gr.Textbox(label="Exercise Plan")
+
+        with gr.Tab("Virtual Trainer Chat"):
+            gr.Markdown("### Chat with Your Virtual Trainer")
+            chatbot = gr.Chatbot(
+                label="Chat History",
+                height=400
+            )
+            msg = gr.Textbox(
+                label="Type your message here",
+                placeholder="Ask me about workouts, diet plans, or fitness advice..."
+            )
+            clear = gr.ClearButton([msg, chatbot], value="Clear Chat")
+
+        with gr.Tab("Daily Tasks"):
+            gr.Markdown("### Earn Points by Completing Tasks!")
+            gr.Markdown("Complete up to 5 tasks per day to earn points and unlock rewards!")
+            task_button = gr.Button("Get New Task")
+            task_output = gr.Textbox(label="Your Task")
+            points_output = gr.Textbox(label="Points Available", visible=False)
+            complete_button = gr.Button("Mark Task as Completed")
+            reward_output = gr.Textbox(label="Your Rewards")
+
+        # Event handlers
+        profile_submit.click(
+            app.process_fitness_data,
+            inputs=[weight_input, height_input, health_issues_input, strength_level_input],
+            outputs=[bmi_output, diet_output, exercise_output],
+        )
+
+        msg.submit(
+            app.chat_response,
+            inputs=[msg, chatbot],
+            outputs=[chatbot]
+        )
+
+        task_button.click(
+            app.process_task,
+            outputs=[task_output, points_output]
+        )
+
+        complete_button.click(
+            app.process_completion,
+            inputs=[points_output],
+            outputs=[reward_output]
+        )
+
+    return interface
+
+
+if __name__ == "__main__":
+    interface = create_gradio_interface()
+    interface.launch(share=True)
